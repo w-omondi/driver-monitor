@@ -10,7 +10,12 @@ export const useAlerts = (addAlert: (message: string, type: "danger" | "warning"
     const [isAlertActive, setIsAlertActive] = useState(false);
     const [isSoundEnabled, setIsSoundEnabled] = useState(true);
     const lastAlertTimeRef = useRef(Date.now());
-    const ALERT_COOLDOWN = 30000; // 30 seconds cooldown between alerts
+    const lastDangerAlertTimeRef = useRef(Date.now());
+    const lastWarningAlertTimeRef = useRef(Date.now());
+
+    // Different cooldown periods for different alert types
+    const DANGER_ALERT_COOLDOWN = 5000; // 5 seconds for danger alerts
+    const WARNING_ALERT_COOLDOWN = 10000; // 10 seconds for warning alerts
     const drowsinessAlarmRef = useRef<HTMLAudioElement | null>(null);
     const warningBeepRef = useRef<HTMLAudioElement | null>(null);
 
@@ -40,9 +45,19 @@ export const useAlerts = (addAlert: (message: string, type: "danger" | "warning"
 
     const handleAlert = async (message: string, type: "danger" | "warning") => {
         const now = Date.now();
-        if (now - lastAlertTimeRef.current < ALERT_COOLDOWN) {
-            console.log("Alert suppressed due to cooldown period");
+        const lastAlertTime = type === "danger" ? lastDangerAlertTimeRef.current : lastWarningAlertTimeRef.current;
+        const cooldown = type === "danger" ? DANGER_ALERT_COOLDOWN : WARNING_ALERT_COOLDOWN;
+
+        if (now - lastAlertTime < cooldown) {
+            console.log(`Alert suppressed due to cooldown period (${type})`);
             return;
+        }
+
+        // Update the appropriate last alert time
+        if (type === "danger") {
+            lastDangerAlertTimeRef.current = now;
+        } else {
+            lastWarningAlertTimeRef.current = now;
         }
 
         lastAlertTimeRef.current = now;

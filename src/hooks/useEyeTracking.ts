@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 interface FaceLandmark {
     x: number;
@@ -13,7 +13,17 @@ interface EyeMetrics {
     blinkCount: number;
 }
 
-export const useEyeTracking = (handleAlert: (message: string, type: "danger" | "warning") => void) => {
+// Constants
+const EAR_THRESHOLD = 0.4; // Lowered threshold for better sensitivity
+const CLOSED_EYES_DURATION = 1500; // Reduced to 1.5 seconds for faster response
+const BLINK_COOLDOWN = 300; // 300ms between blinks
+const EXCESSIVE_BLINKS_THRESHOLD = 15; // Blinks in 60s
+const EXCESSIVE_BLINKS_WINDOW = 60000; // 60s
+const DROWSINESS_WINDOW = 5000; // 5 seconds window for drowsiness detection
+
+export const useEyeTracking = (
+    handleAlert: (message: string, type: "danger" | "warning") => void
+) => {
     const [eyeMetrics, setEyeMetrics] = useState<EyeMetrics>({
         leftEAR: 0,
         rightEAR: 0,
@@ -21,112 +31,134 @@ export const useEyeTracking = (handleAlert: (message: string, type: "danger" | "
         blinkCount: 0,
     });
 
-    const lastBlinkRef = useRef(Date.now());
     const blinkCountRef = useRef(0);
-    const isEyeClosedRef = useRef(false);
+    const lastBlinkTimeRef = useRef(0);
+    const eyesClosedStartRef = useRef<number | null>(null);
+    const blinkTimestampsRef = useRef<number[]>([]);
+    const drowsyAlertSentRef = useRef(false);
+    const fatigueAlertSentRef = useRef(false);
+    const lastDrowsinessCheckRef = useRef(0);
 
-    const calculateEAR = (
-        eyeInner: FaceLandmark,
-        eyeOuter: FaceLandmark,
-        eyeTop: FaceLandmark,
-        eyeBottom: FaceLandmark
-    ) => {
-        const eyeHeight = Math.abs(eyeTop.y - eyeBottom.y);
-        const eyeWidth = Math.abs(eyeOuter.x - eyeInner.x);
-        return eyeHeight / (eyeWidth || 1);
-    };
+    const calculateEAR = useCallback((eye: FaceLandmark[]) => {
+        const vertical1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+        const vertical2 = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+        const horizontal = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+        return (vertical1 + vertical2) / (2.0 * horizontal || 1); // Avoid divide-by-zero
+    }, []);
 
-    const detectDrowsiness = (landmarks: FaceLandmark[]) => {
-        if (!landmarks) {
-            console.log("No landmarks found");
-            return;
-        }
+    const getEyes = useCallback((landmarks: FaceLandmark[]) => {
+        const leftEye = [
+            landmarks[33],  // outer
+            landmarks[160], // top outer
+            landmarks[158], // top inner
+            landmarks[133], // inner
+            landmarks[153], // bottom inner
+            landmarks[144], // bottom outer
+        ];
+        const rightEye = [
+            landmarks[362], // outer
+            landmarks[385], // top outer
+            landmarks[387], // top inner
+            landmarks[263], // inner
+            landmarks[373], // bottom inner
+            landmarks[380], // bottom outer
+        ];
+        return { leftEye, rightEye };
+    }, []);
 
-        // Get correct eye landmarks
-        const leftEyeInner = landmarks[133]; // Left eye inner corner
-        const leftEyeOuter = landmarks[33]; // Left eye outer corner
-        const leftEyeTop = landmarks[159];
-        const leftEyeBottom = landmarks[145];
+    const detectDrowsiness = useCallback(
+        (landmarks: FaceLandmark[]) => {
+            if (!landmarks || landmarks.length < 468) return;
 
-        const rightEyeInner = landmarks[362]; // Right eye inner corner
-        const rightEyeOuter = landmarks[263]; // Right eye outer corner
-        const rightEyeTop = landmarks[386];
-        const rightEyeBottom = landmarks[374];
+            const { leftEye, rightEye } = getEyes(landmarks);
+            const leftEAR = calculateEAR(leftEye);
+            const rightEAR = calculateEAR(rightEye);
+            const averageEAR = (leftEAR + rightEAR) / 2;
 
-        if (
-            !leftEyeInner ||
-            !leftEyeOuter ||
-            !leftEyeTop ||
-            !leftEyeBottom ||
-            !rightEyeInner ||
-            !rightEyeOuter ||
-            !rightEyeTop ||
-            !rightEyeBottom
-        ) {
-            console.log("Missing eye landmarks");
-            return;
-        }
+            const now = Date.now();
 
-        // Calculate EAR
-        const leftEAR = calculateEAR(
-            leftEyeInner,
-            leftEyeOuter,
-            leftEyeTop,
-            leftEyeBottom
-        );
-        const rightEAR = calculateEAR(
-            rightEyeInner,
-            rightEyeOuter,
-            rightEyeTop,
-            rightEyeBottom
-        );
-        const averageEAR = (leftEAR + rightEAR) / 2;
+            // Update metrics
+            setEyeMetrics({
+                leftEAR: Number(leftEAR.toFixed(3)),
+                rightEAR: Number(rightEAR.toFixed(3)),
+                averageEAR: Number(averageEAR.toFixed(3)),
+                blinkCount: blinkCountRef.current,
+            });
 
-        // Update metrics for display
-        setEyeMetrics({
-            leftEAR: Number(leftEAR.toFixed(3)),
-            rightEAR: Number(rightEAR.toFixed(3)),
-            averageEAR: Number(averageEAR.toFixed(3)),
-            blinkCount: blinkCountRef.current,
-        });
-
-        const now = Date.now();
-        const EAR_THRESHOLD = 0.23;
-        const DROWSINESS_TIME_THRESHOLD = 3000; // 3 seconds
-
-        if (averageEAR < EAR_THRESHOLD && !isEyeClosedRef.current) {
-            console.log("Eyes detected as closed");
-            isEyeClosedRef.current = true;
-            blinkCountRef.current++;
-            lastBlinkRef.current = now;
-        } else if (averageEAR >= EAR_THRESHOLD && isEyeClosedRef.current) {
-            console.log("Eyes detected as open");
-            isEyeClosedRef.current = false;
-        }
-
-        // Trigger drowsiness alert if eyes remain closed for too long
-        if (
-            isEyeClosedRef.current &&
-            now - lastBlinkRef.current > DROWSINESS_TIME_THRESHOLD
-        ) {
-            handleAlert(
-                "Warning: Eyes closed for too long - possible drowsiness!",
-                "danger"
+            // Filter timestamps within 1 minute
+            blinkTimestampsRef.current = blinkTimestampsRef.current.filter(
+                (timestamp) => now - timestamp < EXCESSIVE_BLINKS_WINDOW
             );
-        }
 
-        // Alert for excessive blinking (fatigue detection)
-        if (blinkCountRef.current > 50 && now - lastBlinkRef.current < 120000) {
-            handleAlert(
-                "Warning: Frequent blinking detected - possible fatigue!",
-                "warning"
-            );
-            blinkCountRef.current = 0;
-        }
-    };
+            // Check for drowsiness only every DROWSINESS_WINDOW milliseconds
+            if (now - lastDrowsinessCheckRef.current >= DROWSINESS_WINDOW) {
+                lastDrowsinessCheckRef.current = now;
+
+                if (averageEAR < EAR_THRESHOLD) {
+                    // Start closed eyes timer
+                    if (eyesClosedStartRef.current === null) {
+                        eyesClosedStartRef.current = now;
+                        console.log("Eyes closed detected, starting timer");
+                    }
+
+                    // Check for blink
+                    if (
+                        now - lastBlinkTimeRef.current > BLINK_COOLDOWN &&
+                        eyesClosedStartRef.current &&
+                        now - eyesClosedStartRef.current < CLOSED_EYES_DURATION
+                    ) {
+                        blinkCountRef.current++;
+                        blinkTimestampsRef.current.push(now);
+                        lastBlinkTimeRef.current = now;
+                        console.log("Blink detected, count:", blinkCountRef.current);
+
+                        if (
+                            blinkTimestampsRef.current.length > EXCESSIVE_BLINKS_THRESHOLD &&
+                            !fatigueAlertSentRef.current
+                        ) {
+                            console.log("Excessive blinking detected, sending alert");
+                            handleAlert(
+                                "Warning: Excessive blinking detected - possible fatigue",
+                                "warning"
+                            );
+                            fatigueAlertSentRef.current = true;
+                        }
+                    }
+
+                    // Check for drowsiness (long eye closure)
+                    if (
+                        eyesClosedStartRef.current &&
+                        now - eyesClosedStartRef.current >= CLOSED_EYES_DURATION &&
+                        !drowsyAlertSentRef.current
+                    ) {
+                        console.log("Drowsiness detected, sending alert");
+                        handleAlert("Danger: Eyes closed too long - possible drowsiness", "danger");
+                        drowsyAlertSentRef.current = true;
+                    }
+                } else {
+                    // Reset eye-closed state if eyes are open
+                    if (eyesClosedStartRef.current) {
+                        console.log("Eyes open, resetting state");
+                        eyesClosedStartRef.current = null;
+                        drowsyAlertSentRef.current = false;
+                    }
+                }
+
+                // Reset fatigue warning if window passed
+                if (
+                    blinkTimestampsRef.current.length < EXCESSIVE_BLINKS_THRESHOLD &&
+                    fatigueAlertSentRef.current
+                ) {
+                    console.log("Resetting fatigue warning");
+                    fatigueAlertSentRef.current = false;
+                }
+            }
+        },
+        []
+    );
 
     return {
         eyeMetrics,
         detectDrowsiness,
     };
-}; 
+};

@@ -23,9 +23,12 @@ export default function DriverMonitor() {
     handleAlert,
     toggleSound,
   } = useAlerts(addAlert);
+
   const { eyeMetrics, detectDrowsiness } = useEyeTracking(handleAlert);
+  
   const { headPose, movementPattern, detectSuddenMovements } =
     useHeadTracking(handleAlert);
+  
   const { videoRef, canvasRef, startMonitoring, stopMonitoring } =
     useVideoCanvas(
       faceLandmarker,
@@ -42,7 +45,8 @@ export default function DriverMonitor() {
       stopMonitoring();
     }
     return () => stopMonitoring();
-  }, [isMonitoring, faceLandmarker, startMonitoring, stopMonitoring]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMonitoring, faceLandmarker]);
 
   return (
     <div className="fixed inset-0 w-screen h-screen">
