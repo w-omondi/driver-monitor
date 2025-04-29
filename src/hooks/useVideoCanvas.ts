@@ -1,4 +1,4 @@
-import { DrawingUtils, FaceLandmarker} from "@mediapipe/tasks-vision";
+import { DrawingUtils, FaceLandmarker } from "@mediapipe/tasks-vision";
 import { useCallback, useEffect, useRef } from "react";
 
 interface FaceLandmark {
@@ -23,6 +23,7 @@ export const useVideoCanvas = (
     const isInitializedRef = useRef(false);
 
     const drawFaceMesh = useCallback((context: CanvasRenderingContext2D, landmarks: FaceLandmark[]) => {
+        
         if (!landmarks || landmarks.length === 0) {
             console.log("No landmarks found");
             return;
@@ -69,7 +70,7 @@ export const useVideoCanvas = (
             addAlert("Error: Failed to access camera", "danger");
             isInitializedRef.current = false;
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [faceLandmarker]);
 
     const detect = useCallback(async () => {
@@ -97,7 +98,7 @@ export const useVideoCanvas = (
         const timeSinceLastDetection = currentTime - lastDetectionTimeRef.current;
 
         try {
-            const results  = faceLandmarker.detectForVideo(video, currentTime);
+            const results = faceLandmarker.detectForVideo(video, currentTime);
 
             if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                 for (const landmarks of results.faceLandmarks) {
@@ -126,7 +127,7 @@ export const useVideoCanvas = (
         if (isMonitoring) {
             animationFrameRef.current = requestAnimationFrame(detect);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [faceLandmarker, isMonitoring]);
 
     const startMonitoring = useCallback(async () => {

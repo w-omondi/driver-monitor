@@ -25,10 +25,10 @@ export default function DriverMonitor() {
   } = useAlerts(addAlert);
 
   const { eyeMetrics, detectDrowsiness } = useEyeTracking(handleAlert);
-  
+
   const { headPose, movementPattern, detectSuddenMovements } =
     useHeadTracking(handleAlert);
-  
+
   const { videoRef, canvasRef, startMonitoring, stopMonitoring } =
     useVideoCanvas(
       faceLandmarker,
@@ -45,7 +45,7 @@ export default function DriverMonitor() {
       stopMonitoring();
     }
     return () => stopMonitoring();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMonitoring, faceLandmarker]);
 
   return (
@@ -64,14 +64,14 @@ export default function DriverMonitor() {
 
         <video
           ref={videoRef}
-          className="w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain md:object-cover"
           autoPlay
           playsInline
           muted
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full"
+          className="absolute inset-0 w-full h-full object-contain md:object-cover"
         />
 
         <Alert
