@@ -96,7 +96,6 @@ export default function DriverMonitor() {
         <StatusIndicators
           isMonitoring={isMonitoring}
           movementPattern={movementPattern}
-          currentAlert={currentAlert}
         />
       </div>
     </div>

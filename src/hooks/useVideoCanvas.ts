@@ -109,7 +109,7 @@ export const useVideoCanvas = (
                             const nose = landmarks[5]; // nose tip
                             if (nose) {
                                 detectDrowsiness(landmarks);
-                                // detectSuddenMovements(nose, landmarks);
+                                detectSuddenMovements(nose, landmarks);
                             }
                         }
                     }
