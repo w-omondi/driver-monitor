@@ -64,14 +64,14 @@ export default function DriverMonitor() {
 
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-contain md:object-cover"
+          className="absolute inset-0 w-full h-full object-contain md:object-cover transform -scale-x-100"
           autoPlay
           playsInline
           muted
         />
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-contain md:object-cover"
+          className="absolute inset-0 w-full h-full object-contain md:object-cover transform -scale-x-100"
         />
 
         <Alert
