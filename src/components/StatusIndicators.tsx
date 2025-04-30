@@ -41,6 +41,9 @@ export const StatusIndicators: React.FC<StatusIndicatorsProps> = ({
         >
           <div className="animate-pulse w-2 h-2 rounded-full bg-white" />
           <span>{movementPattern.description}</span>
+          <span className="text-sm opacity-75">
+            ({(movementPattern.confidence * 100).toFixed(0)}% confidence)
+          </span>
         </div>
       )}
     </div>

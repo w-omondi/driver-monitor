@@ -27,20 +27,44 @@ interface MovementPattern {
 }
 
 // Configurable thresholds for motion evaluation
+// const MOVEMENT_THRESHOLDS = {
+//     VELOCITY_THRESHOLD: 0.05,
+//     HIGH_VELOCITY_THRESHOLD: 0.15,
+
+//     ACCELERATION_THRESHOLD: 0.02,
+//     HIGH_ACCELERATION_THRESHOLD: 0.05,
+
+//     POSE_THRESHOLD: 45,
+//     HIGH_POSE_THRESHOLD: 60,
+
+//     UNCONSCIOUSNESS_THRESHOLD: 5000,
+//     INITIALIZATION_FRAMES: 10,
+//     ACCIDENT_CONFIRMATION_FRAMES: 3,
+// };
+
 const MOVEMENT_THRESHOLDS = {
-    VELOCITY_THRESHOLD: 0.05,
-    HIGH_VELOCITY_THRESHOLD: 0.15,
+    // --- VELOCITY ---
+    // Face landmark coordinates change very little between frames unless there's sudden motion.
+    // Values are normalized from the frame (0 to 1 range).
+    VELOCITY_THRESHOLD: 0.01,            // Normal subtle head movement
+    HIGH_VELOCITY_THRESHOLD: 0.05,       // Sudden head motion (e.g. jerk, impact)
 
-    ACCELERATION_THRESHOLD: 0.02,
-    HIGH_ACCELERATION_THRESHOLD: 0.05,
+    // --- ACCELERATION ---
+    // Acceleration magnitudes in 3D are usually smaller since frame-to-frame difference is already tiny.
+    ACCELERATION_THRESHOLD: 0.005,       // Subtle acceleration (normal shifts)
+    HIGH_ACCELERATION_THRESHOLD: 0.02,   // High acceleration (impact, fall, etc.)
 
-    POSE_THRESHOLD: 45,
-    HIGH_POSE_THRESHOLD: 60,
+    // --- POSE ANGLES (degrees) ---
+    // These are angular thresholds, not normalized — real degrees.
+    POSE_THRESHOLD: 15,                  // Typical slight tilt (e.g. looking down or to the side)
+    HIGH_POSE_THRESHOLD: 70,             // Sharp rotation (e.g. turning full left/right, nodding down)
 
-    UNCONSCIOUSNESS_THRESHOLD: 5000,
-    INITIALIZATION_FRAMES: 10,
-    ACCIDENT_CONFIRMATION_FRAMES: 3,
+    // --- TIME + FRAMES ---
+    UNCONSCIOUSNESS_THRESHOLD: 5000,     // 5 seconds without movement (used for unconscious detection)
+    INITIALIZATION_FRAMES: 15,           // Warm-up period to calibrate initial movement data
+    ACCIDENT_CONFIRMATION_FRAMES: 5,     // Need 5 strong readings in a row to confirm an accident
 };
+
 
 export const useHeadTracking = (
     handleAlert: (message: string, type: "danger" | "warning") => void
@@ -62,8 +86,11 @@ export const useHeadTracking = (
         const leftEye = landmarks[33];
         const rightEye = landmarks[263];
 
-        const yaw = Math.atan2(rightEye.x - leftEye.x, rightEye.y - leftEye.y) * (180 / Math.PI);
+        // Yaw: Horizontal turning (left/right)
+        const yaw = Math.atan2(rightEye.z - leftEye.z, rightEye.x - leftEye.x) * (180 / Math.PI);
+        // Pitch: Nodding up/down
         const pitch = Math.atan2(nose.y - (leftEye.y + rightEye.y) / 2, nose.z) * (180 / Math.PI);
+        // Roll: Head tilt left/right (2D angle between the eyes)
         const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
 
         return { yaw, pitch, roll };
@@ -177,9 +204,7 @@ export const useHeadTracking = (
 
         if (confidence > 0.8) {
             accidentConfirmationCountRef.current++;
-            if (
-                accidentConfirmationCountRef.current >= MOVEMENT_THRESHOLDS.ACCIDENT_CONFIRMATION_FRAMES
-            ) {
+            if (accidentConfirmationCountRef.current >= MOVEMENT_THRESHOLDS.ACCIDENT_CONFIRMATION_FRAMES) {
                 lastAccidentTimeRef.current = now;
                 const direction = getMovementDirection(data.acceleration);
                 return {
