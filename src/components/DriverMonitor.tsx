@@ -51,6 +51,7 @@ export default function DriverMonitor() {
   return (
     <div className="fixed inset-0 w-screen h-screen">
       <div className="relative w-full h-full">
+        
         <StatusBar
           isMonitoring={isMonitoring}
           eyeMetrics={eyeMetrics}
@@ -69,6 +70,7 @@ export default function DriverMonitor() {
           playsInline
           muted
         />
+
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full object-contain md:object-cover transform -scale-x-100"
@@ -80,7 +82,7 @@ export default function DriverMonitor() {
           isActive={isAlertActive}
         />
 
-        <div className="absolute bottom-6 left-6 z-20">
+        <div className="absolute hidden bottom-6 left-6 z-20 md:block">
           <div className="flex flex-col">
             <h1 className="text-3xl font-bold text-white drop-shadow-lg">
               Driver Monitor

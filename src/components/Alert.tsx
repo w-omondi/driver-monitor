@@ -12,7 +12,7 @@ export const Alert: React.FC<AlertProps> = ({ message, type, isActive }) => {
   return (
     <>
       <div
-        className={`absolute top-1/4 left-1/2 transform -translate-x-1/2 
+        className={`absolute top-1/2 md:top-1/4 left-1/2 transform -translate-x-1/2 
         px-6 py-3 rounded-lg text-white text-xl font-bold
         ${
           type === "danger"

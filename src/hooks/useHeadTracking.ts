@@ -197,12 +197,12 @@ export const useHeadTracking = (
         if (lastAccidentTimeRef.current && now - lastAccidentTimeRef.current < 5000) {
             return {
                 type: "normal",
-                confidence: 0.98,
+                confidence: 1,
                 description: "Head movement is within normal range.",
             };
         }
 
-        if (confidence > 0.8) {
+        if (confidence > 0.9) {
             accidentConfirmationCountRef.current++;
             if (accidentConfirmationCountRef.current >= MOVEMENT_THRESHOLDS.ACCIDENT_CONFIRMATION_FRAMES) {
                 lastAccidentTimeRef.current = now;
@@ -217,7 +217,7 @@ export const useHeadTracking = (
             accidentConfirmationCountRef.current = 0;
         }
 
-        if (confidence > 0.65) {
+        if (confidence > 0.7) {
             return {
                 type: "abnormal",
                 confidence,
@@ -227,7 +227,7 @@ export const useHeadTracking = (
 
         return {
             type: "normal",
-            confidence: 0.98,
+            confidence:1,
             description: "Head movement is within normal range.",
         };
     };
