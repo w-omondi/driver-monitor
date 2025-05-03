@@ -13,11 +13,17 @@ interface EyeMetrics {
     blinkCount: number;
 }
 
-const EAR_THRESHOLD = 0.4;
-const CLOSED_EYES_DURATION = 1500;
-const BLINK_COOLDOWN = 300;
-const EXCESSIVE_BLINKS_THRESHOLD = 15;
-const EXCESSIVE_BLINKS_WINDOW = 60000;
+// Eye Aspect Ratio (EAR) thresholds and timing configurations
+// Range: 0 (fully closed) to 1 (fully open)
+const EAR_THRESHOLD = 0.4;                // Eye closure threshold (0.3-0.4: typical range for detecting closed eyes)
+
+// Time-based thresholds (in milliseconds)
+const CLOSED_EYES_DURATION = 1500;        // Duration to consider eyes as closed (1000-2000ms: typical range)
+const BLINK_COOLDOWN = 300;               // Minimum time between blinks (200-400ms: typical range)
+
+// Blink frequency monitoring
+const EXCESSIVE_BLINKS_THRESHOLD = 15;    // Maximum blinks per minute (12-18: typical range)
+const EXCESSIVE_BLINKS_WINDOW = 60000;    // Time window for blink counting (60000ms = 1 minute)
 
 export const useEyeTracking = (
     handleAlert: (message: string, type: "danger" | "warning") => void
