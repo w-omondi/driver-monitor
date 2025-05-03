@@ -26,43 +26,32 @@ interface MovementPattern {
     description: string;
 }
 
-// Configurable thresholds for motion evaluation
-// const MOVEMENT_THRESHOLDS = {
-//     VELOCITY_THRESHOLD: 0.05,
-//     HIGH_VELOCITY_THRESHOLD: 0.15,
-
-//     ACCELERATION_THRESHOLD: 0.02,
-//     HIGH_ACCELERATION_THRESHOLD: 0.05,
-
-//     POSE_THRESHOLD: 45,
-//     HIGH_POSE_THRESHOLD: 60,
-
-//     UNCONSCIOUSNESS_THRESHOLD: 5000,
-//     INITIALIZATION_FRAMES: 10,
-//     ACCIDENT_CONFIRMATION_FRAMES: 3,
-// };
 
 const MOVEMENT_THRESHOLDS = {
     // --- VELOCITY ---
     // Face landmark coordinates change very little between frames unless there's sudden motion.
     // Values are normalized from the frame (0 to 1 range).
-    VELOCITY_THRESHOLD: 0.01,            // Normal subtle head movement
-    HIGH_VELOCITY_THRESHOLD: 0.05,       // Sudden head motion (e.g. jerk, impact)
+    // Range: 0 (no movement) to 1 (maximum movement)
+    VELOCITY_THRESHOLD: 0.08,            // Normal subtle head movement (0.05-0.08: typical range)
+    HIGH_VELOCITY_THRESHOLD: 0.18,       // Sudden head motion (0.15-0.25: concerning range)
 
     // --- ACCELERATION ---
     // Acceleration magnitudes in 3D are usually smaller since frame-to-frame difference is already tiny.
-    ACCELERATION_THRESHOLD: 0.005,       // Subtle acceleration (normal shifts)
-    HIGH_ACCELERATION_THRESHOLD: 0.02,   // High acceleration (impact, fall, etc.)
+    // Range: 0 (no acceleration) to 1 (maximum acceleration)
+    ACCELERATION_THRESHOLD: 0.05,       // Subtle acceleration (0.03-0.05: normal range)
+    HIGH_ACCELERATION_THRESHOLD: 0.08,   // High acceleration (0.08-0.15: concerning range)
 
     // --- POSE ANGLES (degrees) ---
     // These are angular thresholds, not normalized — real degrees.
-    POSE_THRESHOLD: 15,                  // Typical slight tilt (e.g. looking down or to the side)
-    HIGH_POSE_THRESHOLD: 70,             // Sharp rotation (e.g. turning full left/right, nodding down)
+    // Range: 0° (neutral) to 180° (maximum rotation)
+    POSE_THRESHOLD: 55,                  // Typical slight tilt (30°-55°: normal range)
+    HIGH_POSE_THRESHOLD: 80,             // Sharp rotation (80°-120°: concerning range)
 
     // --- TIME + FRAMES ---
-    UNCONSCIOUSNESS_THRESHOLD: 5000,     // 5 seconds without movement (used for unconscious detection)
-    INITIALIZATION_FRAMES: 15,           // Warm-up period to calibrate initial movement data
-    ACCIDENT_CONFIRMATION_FRAMES: 5,     // Need 5 strong readings in a row to confirm an accident
+    // Time-based thresholds in milliseconds
+    UNCONSCIOUSNESS_THRESHOLD: 5000,     // 5 seconds without movement (3000-7000ms: typical range)
+    INITIALIZATION_FRAMES: 15,           // Warm-up period (10-20 frames: typical range)
+    ACCIDENT_CONFIRMATION_FRAMES: 5,     // Confirmation frames (3-7 frames: typical range)
 };
 
 
@@ -227,7 +216,7 @@ export const useHeadTracking = (
 
         return {
             type: "normal",
-            confidence:1,
+            confidence: 1,
             description: "Head movement is within normal range.",
         };
     };

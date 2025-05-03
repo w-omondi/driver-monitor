@@ -33,12 +33,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div className="absolute top-0 left-0 right-0 bg-black/50 text-white p-4 z-20">
       <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 ">
+
         <div className="flex flex-col gap-2">
           <div className="text-sm text-gray-300">Eye aspect ration</div>
           <div className="w-full grid grid-cols-3 gap-2">
-            <div className="text-xs">Left EAR: {eyeMetrics.leftEAR}</div>
-            <div className="text-xs">Right EAR: {eyeMetrics.rightEAR}</div>
-            <div className="text-xs">Avg EAR: {eyeMetrics.averageEAR}</div>
+            <div className="text-xs">Left: {eyeMetrics.leftEAR}</div>
+            <div className="text-xs">Right: {eyeMetrics.rightEAR}</div>
+            <div className="text-xs">Avg: {eyeMetrics.averageEAR}</div>
           </div>
         </div>
 
