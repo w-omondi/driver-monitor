@@ -1,17 +1,40 @@
+/**
+ * useHeadTracking Hook
+ * 
+ * A custom hook that implements head tracking and movement analysis for detecting
+ * sudden movements, abnormal head poses, and potential accidents. Uses facial
+ * landmarks to calculate head pose angles and track movement patterns.
+ * 
+ * Features:
+ * - Real-time head pose estimation (yaw, pitch, roll)
+ * - Movement velocity and acceleration analysis
+ * - Pattern recognition for normal, abnormal, and accident scenarios
+ * - Confidence-based movement classification
+ */
+
 import { useRef, useState } from "react";
 
+/**
+ * Represents a facial landmark point in 3D space
+ */
 interface FaceLandmark {
     x: number;
     y: number;
     z: number;
 }
 
+/**
+ * Represents the current head pose angles in degrees
+ */
 interface HeadPose {
-    yaw: number;
-    pitch: number;
-    roll: number;
+    yaw: number;   // Horizontal rotation (left/right)
+    pitch: number; // Vertical rotation (up/down)
+    roll: number;  // Side-to-side tilt
 }
 
+/**
+ * Represents movement data for a single frame
+ */
 interface MovementData {
     timestamp: number;
     position: FaceLandmark;
@@ -20,13 +43,19 @@ interface MovementData {
     pose: HeadPose;
 }
 
+/**
+ * Represents a classified movement pattern
+ */
 interface MovementPattern {
     type: "normal" | "abnormal" | "accident";
     confidence: number;
     description: string;
 }
 
-
+/**
+ * Thresholds and configuration values for movement analysis
+ * All values are based on empirical testing and typical ranges
+ */
 const MOVEMENT_THRESHOLDS = {
     // --- VELOCITY ---
     // Face landmark coordinates change very little between frames unless there's sudden motion.
@@ -54,13 +83,14 @@ const MOVEMENT_THRESHOLDS = {
     ACCIDENT_CONFIRMATION_FRAMES: 5,     // Confirmation frames (3-7 frames: typical range)
 };
 
-
 export const useHeadTracking = (
     handleAlert: (message: string, type: "danger" | "warning") => void
 ) => {
+    // State for current head pose and movement pattern
     const [headPose, setHeadPose] = useState<HeadPose>({ yaw: 0, pitch: 0, roll: 0 });
     const [movementPattern, setMovementPattern] = useState<MovementPattern | null>(null);
 
+    // Refs for tracking movement history and state
     const movementHistoryRef = useRef<MovementData[]>([]);
     const frameCountRef = useRef(0);
     const isInitializedRef = useRef(false);
@@ -69,7 +99,13 @@ export const useHeadTracking = (
 
     const MAX_HISTORY_LENGTH = 50;
 
-    // Estimate head rotation (yaw, pitch, roll) using eye and nose landmarks
+    /**
+     * Calculates head pose angles using facial landmarks
+     * Uses the nose and eye positions to estimate rotation in 3D space
+     * 
+     * @param landmarks - Array of facial landmarks
+     * @returns HeadPose object with calculated angles
+     */
     const calculateHeadPose = (landmarks: FaceLandmark[]): HeadPose => {
         const nose = landmarks[1];
         const leftEye = landmarks[33];
@@ -85,7 +121,15 @@ export const useHeadTracking = (
         return { yaw, pitch, roll };
     };
 
-    // Calculate motion between current and previous frame
+    /**
+     * Calculates movement data between frames
+     * Computes velocity and acceleration based on position changes
+     * 
+     * @param currentPosition - Current nose position
+     * @param currentTime - Current timestamp
+     * @param landmarks - Current facial landmarks
+     * @returns MovementData object or null if calculation not possible
+     */
     const calculateMovementData = (
         currentPosition: FaceLandmark,
         currentTime: number,
@@ -107,12 +151,14 @@ export const useHeadTracking = (
         const dt = (currentTime - last.timestamp) / 1000; // time delta in seconds
         if (dt === 0) return null;
 
+        // Calculate velocity (change in position over time)
         const velocity = {
             x: (currentPosition.x - last.position.x) / dt,
             y: (currentPosition.y - last.position.y) / dt,
             z: (currentPosition.z - last.position.z) / dt,
         };
 
+        // Calculate acceleration (change in velocity over time)
         const acceleration = {
             x: (velocity.x - last.velocity.x) / dt,
             y: (velocity.y - last.velocity.y) / dt,
@@ -128,7 +174,12 @@ export const useHeadTracking = (
         };
     };
 
-    // Utility: Determine direction of movement from acceleration vector
+    /**
+     * Determines the primary direction of movement from acceleration vector
+     * 
+     * @param accel - Acceleration vector
+     * @returns String describing the primary direction
+     */
     const getMovementDirection = (accel: FaceLandmark): string => {
         const { x, y, z } = accel;
         const abs = { x: Math.abs(x), y: Math.abs(y), z: Math.abs(z) };
@@ -138,7 +189,13 @@ export const useHeadTracking = (
         return y > 0 ? "up" : "down";
     };
 
-    // Evaluate confidence based on motion magnitudes
+    /**
+     * Calculates confidence score for movement classification
+     * Combines multiple factors to determine how certain we are about the movement type
+     * 
+     * @param data - Current movement data
+     * @returns Confidence score between 0 and 1
+     */
     const calculateConfidence = (data: MovementData): number => {
         const { velocity, acceleration, pose } = data;
 
@@ -148,18 +205,21 @@ export const useHeadTracking = (
 
         let confidence = 0;
 
+        // Add confidence based on acceleration magnitude
         if (accelMag > MOVEMENT_THRESHOLDS.HIGH_ACCELERATION_THRESHOLD) {
             confidence += 0.4;
         } else if (accelMag > MOVEMENT_THRESHOLDS.ACCELERATION_THRESHOLD) {
             confidence += 0.2;
         }
 
+        // Add confidence based on velocity magnitude
         if (velocityMag > MOVEMENT_THRESHOLDS.HIGH_VELOCITY_THRESHOLD) {
             confidence += 0.3;
         } else if (velocityMag > MOVEMENT_THRESHOLDS.VELOCITY_THRESHOLD) {
             confidence += 0.1;
         }
 
+        // Add confidence based on head pose angles
         if (poseMax > MOVEMENT_THRESHOLDS.HIGH_POSE_THRESHOLD) {
             confidence += 0.2;
         } else if (poseMax > MOVEMENT_THRESHOLDS.POSE_THRESHOLD) {
@@ -178,11 +238,18 @@ export const useHeadTracking = (
         return Math.min(confidence, 1);
     };
 
-    // Analyze movement and return classification pattern
+    /**
+     * Analyzes movement data and classifies it into a pattern
+     * Uses confidence scores and thresholds to determine movement type
+     * 
+     * @param data - Current movement data
+     * @returns Classified MovementPattern
+     */
     const analyzeMovementPattern = (data: MovementData): MovementPattern => {
         const confidence = calculateConfidence(data);
         const now = Date.now();
 
+        // Ignore movements shortly after an accident alert
         if (lastAccidentTimeRef.current && now - lastAccidentTimeRef.current < 5000) {
             return {
                 type: "normal",
@@ -191,6 +258,7 @@ export const useHeadTracking = (
             };
         }
 
+        // Check for potential accident
         if (confidence > 0.9) {
             accidentConfirmationCountRef.current++;
             if (accidentConfirmationCountRef.current >= MOVEMENT_THRESHOLDS.ACCIDENT_CONFIRMATION_FRAMES) {
@@ -206,6 +274,7 @@ export const useHeadTracking = (
             accidentConfirmationCountRef.current = 0;
         }
 
+        // Check for abnormal movement
         if (confidence > 0.7) {
             return {
                 type: "abnormal",
@@ -214,6 +283,7 @@ export const useHeadTracking = (
             };
         }
 
+        // Default to normal movement
         return {
             type: "normal",
             confidence: 1,
@@ -222,8 +292,11 @@ export const useHeadTracking = (
     };
 
     /**
-     * Main tracking function.
-     * Should be called with the current nose landmark and the full landmark array per frame.
+     * Main tracking function that processes each frame
+     * Should be called with the current nose landmark and the full landmark array
+     * 
+     * @param nose - Current nose position
+     * @param landmarks - Current facial landmarks
      */
     const detectSuddenMovements = (nose: FaceLandmark, landmarks: FaceLandmark[]) => {
         const now = Date.now();
@@ -231,6 +304,7 @@ export const useHeadTracking = (
 
         if (!data) return;
 
+        // Initialize tracking system
         if (!isInitializedRef.current) {
             frameCountRef.current++;
             if (frameCountRef.current < MOVEMENT_THRESHOLDS.INITIALIZATION_FRAMES) {
@@ -248,24 +322,15 @@ export const useHeadTracking = (
         ];
 
         const pattern = analyzeMovementPattern(data);
-        setMovementPattern(pattern);
         setHeadPose(data.pose);
+        setMovementPattern(pattern);
 
-        // Emit alerts based on pattern classification
-        if (pattern.type === "accident" && pattern.confidence > 0.8) {
+        // Trigger alerts for abnormal movements and accidents
+        if (pattern.type === "accident") {
             handleAlert(pattern.description, "danger");
-        } else if (pattern.type === "abnormal" && pattern.confidence > 0.65) {
-            handleAlert("Warning: Abnormal head movement detected", "warning");
+        } else if (pattern.type === "abnormal") {
+            handleAlert(pattern.description, "warning");
         }
-
-        // Debug output
-        console.log({
-            velocity: data.velocity,
-            acceleration: data.acceleration,
-            pose: data.pose,
-            confidence: pattern.confidence,
-            type: pattern.type,
-        });
     };
 
     return {

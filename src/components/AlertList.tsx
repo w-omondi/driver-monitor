@@ -1,14 +1,25 @@
+/**
+ * AlertList Component
+ *
+ * A component that displays a list of active alerts with their remaining time
+ * and provides functionality to clear individual alerts or all alerts at once.
+ * Alerts are automatically cleared when they expire.
+ */
+
 "use client";
 
 import { useMonitoring } from "@/contexts/MonitoringContext";
 import { useEffect, useState } from "react";
 
 export default function AlertList() {
+  // Get alert management functions and current alerts from monitoring context
   const { alerts, clearAlert, clearAllAlerts, clearExpiredAlerts } =
     useMonitoring();
+
+  // State to trigger re-renders for countdown updates
   const [, setUpdateTrigger] = useState(0);
 
-  // Update the component every second to show accurate countdown
+  // Set up interval to update countdown and clear expired alerts
   useEffect(() => {
     const interval = setInterval(() => {
       setUpdateTrigger((prev) => prev + 1);
@@ -18,6 +29,11 @@ export default function AlertList() {
     return () => clearInterval(interval);
   }, [clearExpiredAlerts]);
 
+  /**
+   * Calculate and format the remaining time for an alert
+   * @param expiresAt - Timestamp when the alert expires
+   * @returns Formatted string showing remaining time or "Expired"
+   */
   const getTimeRemaining = (expiresAt: number) => {
     const now = Date.now();
     const remaining = expiresAt - now;
@@ -27,6 +43,7 @@ export default function AlertList() {
     return `${seconds}s remaining`;
   };
 
+  // Show placeholder when no alerts are present
   if (alerts.length === 0) {
     return (
       <div className="bg-white p-4 rounded-lg shadow-md">
@@ -37,6 +54,7 @@ export default function AlertList() {
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
+      {/* Header with alert count and clear all button */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Alerts ({alerts.length})</h2>
         <button
@@ -46,6 +64,8 @@ export default function AlertList() {
           Clear All
         </button>
       </div>
+
+      {/* Scrollable list of alerts */}
       <div className="h-[300px] overflow-y-auto space-y-2">
         {alerts.map((alert) => (
           <div
@@ -58,6 +78,7 @@ export default function AlertList() {
                 : "bg-green-100 border border-green-200"
             }`}
           >
+            {/* Alert content and countdown */}
             <div className="flex-grow">
               <p
                 className={`${
@@ -74,6 +95,8 @@ export default function AlertList() {
                 {getTimeRemaining(alert.expiresAt)}
               </p>
             </div>
+
+            {/* Clear individual alert button */}
             <button
               onClick={() => clearAlert(alert.id)}
               className="ml-2 text-gray-500 hover:text-gray-700"
